@@ -1,0 +1,45 @@
+# ─── CLAUDE CODE ──────────────────────────────────────────────────────────────
+.claude/
+
+# ─── REPORTES GENERADOS (pueden contener info sensible del sistema) ───────────
+reports/
+*.html
+*.json
+!config/*.json
+
+# ─── LOGS DEL TOOLKIT ─────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ─── BACKUPS (contienen claves de registro y configuraciones del sistema) ──────
+backup/
+
+# ─── ARCHIVOS DE CONFIGURACIÓN LOCAL / SECRETOS ──────────────────────────────
+*.env
+*.secret
+secrets.ps1
+local.ps1
+local_config.json
+
+# ─── ARCHIVOS TEMPORALES DE WINDOWS ───────────────────────────────────────────
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.tmp
+*.temp
+
+# ─── POWERSHELL ARTIFACTS ─────────────────────────────────────────────────────
+*.pssproj.user
+TestResults/
+coverage.xml
+
+# ─── EDITORS / IDEs ───────────────────────────────────────────────────────────
+.vscode/settings.json
+.vscode/*.code-workspace
+.idea/
+*.suo
+*.user
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+ehthumbs.db

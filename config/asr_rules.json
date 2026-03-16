@@ -1,0 +1,182 @@
+{
+  "_comment": "Windows Hardening Toolkit - ASR Rules Configuration",
+  "_version": "1.0.0",
+  "_reference": "https://docs.microsoft.com/defender-endpoint/attack-surface-reduction-rules-reference",
+  "_mitre": "Multiple T1-level techniques covered",
+
+  "rules": [
+    {
+      "Id": "BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550",
+      "Name": "Block executable content from email client and webmail",
+      "Description": "Bloquea ejecutables (.exe, .dll, .js, .vbs, .ps1, etc.) adjuntos en emails o descargados via webmail.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1566.001 (Spearphishing Attachment)",
+      "CISRef": "18.9.45.3.1",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "75668C1F-73B5-4CF0-BB93-3ECF5CB7CC84",
+      "Name": "Block Office applications from injecting code into other processes",
+      "Description": "Impide que Word, Excel, PowerPoint inyecten código en otros procesos (ej: shellcode injection).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1055 (Process Injection)",
+      "CISRef": "18.9.45.3.2",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "3B576869-A4EC-4529-8536-B80A7769E899",
+      "Name": "Block Office applications from creating executable content",
+      "Description": "Impide que aplicaciones Office creen archivos ejecutables (droppers).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1204.002 (Malicious File)",
+      "CISRef": "18.9.45.3.3",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "D4F940AB-401B-4EFC-AADC-AD5F3C50688A",
+      "Name": "Block Office applications from creating child processes",
+      "Description": "Impide que Word, Excel, PowerPoint lancen procesos hijos (cmd.exe, powershell.exe).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1059 (Command and Scripting Interpreter)",
+      "CISRef": "18.9.45.3.4",
+      "Risk": "High"
+    },
+    {
+      "Id": "D3E037E1-3EB8-44C8-A917-57927947596D",
+      "Name": "Block JavaScript and VBScript from launching downloaded executable content",
+      "Description": "Bloquea scripts JS/VBS descargados de Internet para que no ejecuten archivos.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1059.007 (JavaScript)",
+      "CISRef": "18.9.45.3.5",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "5BEB7EFE-FD9A-4556-801D-275E5FFC04CC",
+      "Name": "Block execution of potentially obfuscated scripts",
+      "Description": "Detecta y bloquea scripts con técnicas de ofuscación comunes (base64, char encoding, etc.).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1027 (Obfuscated Files or Information)",
+      "CISRef": "18.9.45.3.6",
+      "Risk": "High"
+    },
+    {
+      "Id": "92E97FA1-2EDF-4476-BDD6-9DD0B4DDDC7B",
+      "Name": "Block Win32 API calls from Office macros",
+      "Description": "Impide que macros de Office llamen directamente a la API de Windows (evasión de AV).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1106 (Native API)",
+      "CISRef": "18.9.45.3.7",
+      "Risk": "High"
+    },
+    {
+      "Id": "01443614-CD74-433A-B99E-2ECDC07BFC25",
+      "Name": "Block executable files from running unless they meet a prevalence, age, or trusted list criterion",
+      "Description": "Bloquea ejecutables desconocidos/nuevos que no tienen suficiente reputación en la nube.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1204 (User Execution)",
+      "CISRef": "18.9.45.3.8",
+      "Risk": "Medium",
+      "Note": "Puede generar falsos positivos en software personalizado. Evaluar con AuditMode primero."
+    },
+    {
+      "Id": "C1DB55AB-C21A-4637-BB3F-A12568109D35",
+      "Name": "Use advanced protection against ransomware",
+      "Description": "Aplica análisis heurístico avanzado en la nube para detectar comportamiento de ransomware.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1486 (Data Encrypted for Impact)",
+      "CISRef": "18.9.45.3.9",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "9E6C4E1F-7D60-472F-BA1A-A39EF669E4B2",
+      "Name": "Block credential stealing from the Windows local security authority subsystem (lsass.exe)",
+      "Description": "Impide el acceso no autorizado a la memoria de LSASS para robo de credenciales.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1003.001 (LSASS Memory)",
+      "CISRef": "18.9.45.3.10",
+      "Risk": "Critical"
+    },
+    {
+      "Id": "D1E49AAC-8F56-4280-B9BA-993A6D77406C",
+      "Name": "Block process creations originating from PSExec and WMI commands",
+      "Description": "Bloquea la creación de procesos via PSExec y WMI, técnicas usadas para movimiento lateral.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1047 (WMI), T1021.002 (Remote Services SMB)",
+      "CISRef": "18.9.45.3.11",
+      "Risk": "High",
+      "Note": "En entornos con gestión remota legítima via WMI/PSExec, usar AuditMode."
+    },
+    {
+      "Id": "B2B3F03D-6A65-4F7B-A9C7-1C7EF74A9BA4",
+      "Name": "Block untrusted and unsigned processes that run from USB",
+      "Description": "Bloquea ejecutables no firmados que se lancen desde dispositivos USB.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1091 (Replication Through Removable Media)",
+      "CISRef": "18.9.45.3.12",
+      "Risk": "High"
+    },
+    {
+      "Id": "26190899-1602-49E8-8B27-EB1D0A1CE869",
+      "Name": "Block Office communication application from creating child processes",
+      "Description": "Impide que Outlook y otras apps de comunicación Office lancen procesos hijos.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1566 (Phishing)",
+      "CISRef": "18.9.45.3.13",
+      "Risk": "High"
+    },
+    {
+      "Id": "7674BA52-37EB-4A4F-A9A1-F0F9A1619A2C",
+      "Name": "Block Adobe Reader from creating child processes",
+      "Description": "Impide que Adobe Reader lance procesos hijos (explotación de PDF maliciosos).",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1204.002 (Malicious File)",
+      "CISRef": "18.9.45.3.14",
+      "Risk": "High"
+    },
+    {
+      "Id": "E6DB77E5-3DF2-4CF1-B95A-636979351E5B",
+      "Name": "Block persistence through WMI event subscription",
+      "Description": "Bloquea el uso de subscripciones WMI para mantener persistencia en el sistema.",
+      "Enabled": true,
+      "Action": "Block",
+      "MitreRef": "T1546.003 (WMI Event Subscription)",
+      "CISRef": "18.9.45.3.15",
+      "Risk": "High"
+    }
+  ],
+
+  "profiles": {
+    "audit_all": {
+      "description": "Todas las reglas en modo Auditoría (sin bloqueo, solo logging)",
+      "action": "AuditMode"
+    },
+    "block_critical": {
+      "description": "Solo reglas críticas en modo Block (menor riesgo de rotura)",
+      "enabled_ids": [
+        "BE9BA2D9-53EA-4CDC-84E5-9B1EEEE46550",
+        "9E6C4E1F-7D60-472F-BA1A-A39EF669E4B2",
+        "C1DB55AB-C21A-4637-BB3F-A12568109D35",
+        "D4F940AB-401B-4EFC-AADC-AD5F3C50688A"
+      ],
+      "action": "Block"
+    },
+    "block_all": {
+      "description": "Todas las reglas en modo Block (hardening máximo)",
+      "action": "Block"
+    }
+  }
+}

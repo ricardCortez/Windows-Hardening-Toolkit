@@ -1,0 +1,149 @@
+{
+  "_comment": "Windows Hardening Toolkit - Security Policies Configuration",
+  "_version": "1.0.0",
+  "_standards": ["CIS Benchmark", "Microsoft Security Baseline", "NIST 800-53"],
+
+  "hardening_profiles": {
+    "basic": {
+      "description": "Hardening básico: controles de alto impacto y bajo riesgo de rotura",
+      "modules": ["firewall", "network_basic", "defender_basic", "tls_basic"],
+      "skip_rdp_block": true,
+      "skip_winrm_block": true,
+      "audit_mode_asr": true
+    },
+    "enterprise": {
+      "description": "Hardening completo para entornos empresariales",
+      "modules": ["firewall", "network", "defender", "tls", "credentials", "registry", "audit_policy"],
+      "skip_rdp_block": false,
+      "skip_winrm_block": false,
+      "audit_mode_asr": false
+    },
+    "server": {
+      "description": "Hardening para Windows Server (conservador con servicios de red)",
+      "modules": ["firewall", "network_basic", "defender", "tls", "credentials", "registry"],
+      "skip_rdp_block": true,
+      "skip_winrm_block": true,
+      "audit_mode_asr": true
+    }
+  },
+
+  "password_policy": {
+    "min_length": 14,
+    "max_age_days": 60,
+    "min_age_days": 1,
+    "history_count": 24,
+    "lockout_threshold": 5,
+    "lockout_duration_minutes": 15,
+    "lockout_observation_window_minutes": 15,
+    "complexity_enabled": true,
+    "reference": "CIS 1.1.x / NIST IA-5"
+  },
+
+  "firewall": {
+    "profiles": ["Domain", "Private", "Public"],
+    "default_inbound_action": "Block",
+    "default_outbound_action": "Allow",
+    "log_allowed": true,
+    "log_blocked": true,
+    "log_max_size_kb": 32767,
+    "blocked_ports_inbound": [
+      {"port": 21,   "protocol": "TCP", "description": "FTP cleartext"},
+      {"port": 23,   "protocol": "TCP", "description": "Telnet cleartext"},
+      {"port": 69,   "protocol": "UDP", "description": "TFTP unauthenticated"},
+      {"port": 135,  "protocol": "TCP", "description": "RPC Endpoint Mapper"},
+      {"port": 137,  "protocol": "UDP", "description": "NetBIOS Name Service"},
+      {"port": 138,  "protocol": "UDP", "description": "NetBIOS Datagram"},
+      {"port": 139,  "protocol": "TCP", "description": "NetBIOS Session"},
+      {"port": 445,  "protocol": "TCP", "description": "SMB (EternalBlue)"},
+      {"port": 593,  "protocol": "TCP", "description": "RPC over HTTP"},
+      {"port": 1900, "protocol": "UDP", "description": "UPnP SSDP"},
+      {"port": 5985, "protocol": "TCP", "description": "WinRM HTTP"},
+      {"port": 5986, "protocol": "TCP", "description": "WinRM HTTPS"}
+    ],
+    "reference": "CIS Section 9 / NIST SC-7"
+  },
+
+  "smb": {
+    "disable_smb1": true,
+    "require_signing": true,
+    "disable_compression": true,
+    "disable_guest_access": true,
+    "reference": "CIS 18.3.3 / MITRE T1021.002"
+  },
+
+  "network": {
+    "disable_netbios": true,
+    "disable_llmnr": true,
+    "disable_mdns": true,
+    "ntlm_level": 5,
+    "ntlm_min_session_security": "0x20080000",
+    "reference": "CIS 18.5 / MITRE T1557"
+  },
+
+  "tls": {
+    "disabled_protocols": ["SSL 2.0", "SSL 3.0", "TLS 1.0", "TLS 1.1"],
+    "enabled_protocols": ["TLS 1.2", "TLS 1.3"],
+    "min_dh_key_bits": 2048,
+    "disable_rc4": true,
+    "disable_3des": true,
+    "configure_dotnet": true,
+    "reference": "NIST SP 800-52 Rev.2 / PCI-DSS 4.0"
+  },
+
+  "defender": {
+    "enable_realtime": true,
+    "enable_behavior_monitoring": true,
+    "enable_network_protection": "Block",
+    "enable_controlled_folder_access": "Enabled",
+    "pua_protection": "Enabled",
+    "cloud_block_level": "High",
+    "cloud_extended_timeout": 50,
+    "maps_reporting": "Advanced",
+    "signature_update_interval_hours": 4,
+    "reference": "CIS 18.9.45 / MITRE T1562"
+  },
+
+  "credentials": {
+    "enable_lsass_ppl": true,
+    "disable_wdigest": true,
+    "enable_credential_guard": true,
+    "disable_domain_creds_storage": true,
+    "disable_lm_hash": true,
+    "kerberos_encryption": "AES256",
+    "reference": "CIS 18.3 / MITRE T1003"
+  },
+
+  "powershell": {
+    "disable_v2": true,
+    "enable_script_block_logging": true,
+    "enable_module_logging": true,
+    "enable_transcription": true,
+    "execution_policy": "RemoteSigned",
+    "reference": "CIS 18.9.95 / MITRE T1059.001"
+  },
+
+  "audit_policy": {
+    "security_log_max_size_mb": 1024,
+    "application_log_max_size_mb": 256,
+    "system_log_max_size_mb": 256,
+    "powershell_log_max_size_mb": 512,
+    "enable_process_cmdline_audit": true,
+    "reference": "CIS 17.x / NIST AU-2"
+  },
+
+  "uac": {
+    "enable_lua": true,
+    "consent_prompt_admin": 2,
+    "consent_prompt_user": 1,
+    "validate_admin_code_signatures": true,
+    "prompt_on_secure_desktop": true,
+    "reference": "CIS 2.3.17"
+  },
+
+  "thresholds": {
+    "score_good": 80,
+    "score_acceptable": 60,
+    "signature_age_warning_hours": 24,
+    "signature_age_critical_hours": 72
+  }
+}
