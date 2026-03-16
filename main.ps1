@@ -1,4 +1,5 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
+#Requires -RunAsAdministrator
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Main Entry Point
@@ -28,7 +29,7 @@
     .\main.ps1 -Action Audit
 
     # Aplicar hardening empresarial con backup automático:
-    .\main.ps1 -Action Harden -Profile Enterprise
+    .\main.ps1 -Action Harden -HardeningProfile Enterprise
 
     # Generar reporte:
     .\main.ps1 -Action Report
@@ -43,7 +44,7 @@ param(
     [string]$Action  = 'Menu',
 
     [ValidateSet('Basic', 'Enterprise', 'Server')]
-    [string]$Profile = 'Enterprise',
+    [string]$HardeningProfile = 'Enterprise',
 
     [string]$SessionId = '',
 
@@ -97,7 +98,7 @@ function Test-Prerequisites {
     }
 
     # Verificar Windows
-    if (-not $IsWindows -and $PSVersionTable.PSVersion.Major -ge 6) {
+    if ($PSVersionTable.PSVersion.Major -ge 6 -and -not $IsWindows) {
         $issues += "CRITICO: Este toolkit es exclusivo para sistemas Windows."
     }
 
@@ -491,9 +492,6 @@ function Main {
         exit 1
     }
 
-    # Cargar módulos
-    Import-ToolkitModules
-
     # Crear directorios necesarios
     foreach ($dir in @($Script:LogsPath, $Script:BackupPath, $Script:ReportsPath)) {
         if (-not (Test-Path $dir)) {
@@ -517,7 +515,7 @@ function Main {
 
     Write-LogInfo "$Script:ToolkitName v$Script:ToolkitVersion iniciado." -Component 'Main'
     Write-LogInfo "Session ID: $Script:SessionId" -Component 'Main'
-    Write-LogInfo "Modo: $Action$(if ($Action -eq 'Harden') { " / Perfil: $Profile" })" -Component 'Main'
+    Write-LogInfo "Modo: $Action$(if ($Action -eq 'Harden') { " / Perfil: $HardeningProfile" })" -Component 'Main'
 
     # Variables de estado global
     $Script:LastAuditResults = $null
@@ -535,7 +533,7 @@ function Main {
             $Script:LastAuditScore   = $results.Score
         }
         'Harden' {
-            switch ($Profile) {
+            switch ($HardeningProfile) {
                 'Basic'      { Invoke-BasicHardening      }
                 'Enterprise' { Invoke-EnterpriseHardening }
                 'Server'     {
@@ -573,5 +571,67 @@ function Main {
 }
 
 # ─── INICIO ───────────────────────────────────────────────────────────────────
+# Los módulos se cargan aquí, en el scope del SCRIPT (no dentro de una función).
+# Esto es crítico: dot-sourcing dentro de una función crea las funciones en el
+# scope local de esa función, que se destruye al retornar. Cargando aquí, las
+# funciones quedan disponibles en el scope del script y son visibles desde Main
+# y todas las funciones que Main invoca (Show-MainMenu, Show-Banner, etc.).
+
+# Limpiar errores previos para capturar únicamente los de esta sesión
+$Error.Clear()
+
+$Script:_ModuleLoadOrder = @(
+    'logging.ps1', 'audit.ps1', 'firewall.ps1', 'network.ps1',
+    'defender.ps1', 'tls.ps1', 'credentials.ps1', 'registry.ps1',
+    'logging_audit.ps1', 'rollback.ps1', 'reporting.ps1'
+)
+
+foreach ($Script:_mod in $Script:_ModuleLoadOrder) {
+    $Script:_modPath = Join-Path $Script:ModulesPath $Script:_mod
+    if (Test-Path $Script:_modPath) {
+        try   { . $Script:_modPath }
+        catch { Write-Warning "Error al cargar módulo '$Script:_mod': $_" }
+    }
+    else {
+        Write-Warning "Módulo no encontrado: $Script:_modPath"
+    }
+}
+
+# ─── DIAGNÓSTICO DE ARRANQUE ──────────────────────────────────────────────────
+# Si hubo errores (no-terminantes) durante la carga de módulos, los captura en
+# un archivo para que persistan aunque Clear-Host limpie la consola después.
+if ($Error.Count -gt 0) {
+    $Script:_diagFile = Join-Path $env:TEMP "WinHardening_Startup_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+    try {
+        $Script:_diagLines = @("=== Windows Hardening Toolkit — Errores de Arranque ===")
+        $Script:_diagLines += "Timestamp : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+        $Script:_diagLines += "PS Version: $($PSVersionTable.PSVersion)"
+        $Script:_diagLines += ""
+        $Script:_i = 0
+        foreach ($Script:_err in $Error) {
+            $Script:_i++
+            $Script:_diagLines += "[$Script:_i] $($Script:_err.Exception.Message)"
+            if ($Script:_err.InvocationInfo -and $Script:_err.InvocationInfo.ScriptName) {
+                $Script:_diagLines += "    Archivo : $($Script:_err.InvocationInfo.ScriptName)"
+                $Script:_diagLines += "    Línea   : $($Script:_err.InvocationInfo.ScriptLineNumber)"
+                $Script:_diagLines += "    Código  : $($Script:_err.InvocationInfo.Line.Trim())"
+            }
+            $Script:_diagLines += ""
+        }
+        [System.IO.File]::WriteAllText(
+            $Script:_diagFile,
+            ($Script:_diagLines -join "`r`n"),
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        Write-Host ""
+        Write-Host "  [DIAGNOSTICO] $($Error.Count) error(es) detectados al iniciar." -ForegroundColor Red
+        Write-Host "  Log guardado en: $Script:_diagFile" -ForegroundColor Yellow
+        Write-Host "  (El archivo persiste aunque se limpie la consola)" -ForegroundColor DarkGray
+        Write-Host ""
+        Start-Sleep -Seconds 4
+    }
+    catch { }
+}
+$Error.Clear()
 
 Main

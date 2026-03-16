@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Reporting Module
@@ -54,9 +54,9 @@ function New-TextReport {
     }
 
     $osInfo      = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
-    $secure      = ($AuditResults | Where-Object Status -eq 'SECURE').Count
-    $warning     = ($AuditResults | Where-Object Status -eq 'WARNING').Count
-    $vulnerable  = ($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
+    $secure      = @($AuditResults | Where-Object Status -eq 'SECURE').Count
+    $warning     = @($AuditResults | Where-Object Status -eq 'WARNING').Count
+    $vulnerable  = @($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
     $scoreRating = if ($Score -ge 80) { 'BUENO' } elseif ($Score -ge 60) { 'ACEPTABLE' } else { 'CRITICO' }
 
     $sb = [System.Text.StringBuilder]::new()
@@ -68,8 +68,10 @@ function New-TextReport {
     $null = $sb.AppendLine("  Fecha             : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')")
     $null = $sb.AppendLine("  Hostname          : $($env:COMPUTERNAME)")
     $null = $sb.AppendLine("  Usuario           : $($env:USERNAME)")
-    $null = $sb.AppendLine("  Sistema Operativo : $($osInfo?.Caption)")
-    $null = $sb.AppendLine("  Versión OS        : $($osInfo?.Version)")
+    $osCaption = if ($osInfo) { $osInfo.Caption } else { 'N/A' }
+    $osVersion = if ($osInfo) { $osInfo.Version } else { 'N/A' }
+    $null = $sb.AppendLine("  Sistema Operativo : $osCaption")
+    $null = $sb.AppendLine("  Versión OS        : $osVersion")
     $null = $sb.AppendLine("  PS Version        : $($PSVersionTable.PSVersion)")
     $null = $sb.AppendLine("")
     $null = $sb.AppendLine("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -91,10 +93,10 @@ function New-TextReport {
     $null = $sb.AppendLine("")
 
     foreach ($cat in ($categories | Sort-Object)) {
-        $catResults = $AuditResults | Where-Object Category -eq $cat
-        $catSecure  = ($catResults | Where-Object Status -eq 'SECURE').Count
-        $catWarning = ($catResults | Where-Object Status -eq 'WARNING').Count
-        $catVuln    = ($catResults | Where-Object Status -eq 'VULNERABLE').Count
+        $catResults = @($AuditResults | Where-Object Category -eq $cat)
+        $catSecure  = @($catResults | Where-Object Status -eq 'SECURE').Count
+        $catWarning = @($catResults | Where-Object Status -eq 'WARNING').Count
+        $catVuln    = @($catResults | Where-Object Status -eq 'VULNERABLE').Count
         $catTotal   = $catResults.Count
         $catScore   = if ($catTotal -gt 0) { [math]::Round(($catSecure / $catTotal) * 100) } else { 0 }
 
@@ -188,6 +190,18 @@ function New-TextReport {
     }
 }
 
+# ─── HELPER: HTML ENCODE (sin dependencia de System.Web) ─────────────────────
+
+function ConvertTo-HtmlEncoded {
+    param([string]$Text)
+    if (-not $Text) { return '' }
+    $Text -replace '&', '&amp;' `
+          -replace '<', '&lt;'  `
+          -replace '>', '&gt;'  `
+          -replace '"', '&quot;' `
+          -replace "'", '&#39;'
+}
+
 # ─── GENERAR REPORTE HTML ─────────────────────────────────────────────────────
 
 function New-HtmlReport {
@@ -216,9 +230,11 @@ function New-HtmlReport {
     }
 
     $osInfo     = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
-    $secure     = ($AuditResults | Where-Object Status -eq 'SECURE').Count
-    $warning    = ($AuditResults | Where-Object Status -eq 'WARNING').Count
-    $vulnerable = ($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
+    $htmlOsCaption = if ($osInfo) { $osInfo.Caption } else { 'N/A' }
+    $htmlOsVersion = if ($osInfo) { $osInfo.Version } else { 'N/A' }
+    $secure     = @($AuditResults | Where-Object Status -eq 'SECURE').Count
+    $warning    = @($AuditResults | Where-Object Status -eq 'WARNING').Count
+    $vulnerable = @($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
     $scoreColor = if ($Score -ge 80) { '#28a745' } elseif ($Score -ge 60) { '#ffc107' } else { '#dc3545' }
     $timestamp  = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
 
@@ -236,7 +252,7 @@ function New-HtmlReport {
             'VULNERABLE' { '<span class="badge bg-danger">VULNERABLE</span>'  }
             default      { '<span class="badge bg-secondary">N/A</span>'      }
         }
-        "<tr class='$rowClass'><td>$($item.Category)</td><td>$($item.Control)</td><td>$badge</td><td>$([System.Web.HttpUtility]::HtmlEncode($item.CurrentValue))</td><td>$([System.Web.HttpUtility]::HtmlEncode($item.ExpectedValue))</td><td><small>$($item.Reference)</small></td></tr>"
+        "<tr class='$rowClass'><td>$($item.Category)</td><td>$($item.Control)</td><td>$badge</td><td>$(ConvertTo-HtmlEncoded $item.CurrentValue)</td><td>$(ConvertTo-HtmlEncoded $item.ExpectedValue)</td><td><small>$($item.Reference)</small></td></tr>"
     }
 
     $html = @"
@@ -280,12 +296,12 @@ function New-HtmlReport {
                     <table class="table table-sm table-borderless">
                         <tr><td class="text-muted">Hostname</td><td>$($env:COMPUTERNAME)</td></tr>
                         <tr><td class="text-muted">Usuario</td><td>$($env:USERNAME)</td></tr>
-                        <tr><td class="text-muted">Sistema Operativo</td><td>$($osInfo?.Caption)</td></tr>
+                        <tr><td class="text-muted">Sistema Operativo</td><td>$htmlOsCaption</td></tr>
                     </table>
                 </div>
                 <div class="col-md-6">
                     <table class="table table-sm table-borderless">
-                        <tr><td class="text-muted">Versión OS</td><td>$($osInfo?.Version)</td></tr>
+                        <tr><td class="text-muted">Versión OS</td><td>$htmlOsVersion</td></tr>
                         <tr><td class="text-muted">PowerShell</td><td>$($PSVersionTable.PSVersion)</td></tr>
                         <tr><td class="text-muted">Fecha del reporte</td><td>$timestamp</td></tr>
                     </table>
@@ -397,23 +413,25 @@ function New-JsonReport {
     }
 
     $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction SilentlyContinue
+    $jsonOsCaption = if ($osInfo) { $osInfo.Caption } else { 'N/A' }
+    $jsonOsVersion = if ($osInfo) { $osInfo.Version } else { 'N/A' }
 
     $report = @{
         Metadata = @{
             Timestamp       = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
             Hostname        = $env:COMPUTERNAME
             Username        = $env:USERNAME
-            OS              = $osInfo?.Caption
-            OSVersion       = $osInfo?.Version
+            OS              = $jsonOsCaption
+            OSVersion       = $jsonOsVersion
             PSVersion       = $PSVersionTable.PSVersion.ToString()
             ToolkitVersion  = '1.0.0'
         }
         Summary = @{
             Score      = $Score
             Total      = $AuditResults.Count
-            Secure     = ($AuditResults | Where-Object Status -eq 'SECURE').Count
-            Warning    = ($AuditResults | Where-Object Status -eq 'WARNING').Count
-            Vulnerable = ($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
+            Secure     = @($AuditResults | Where-Object Status -eq 'SECURE').Count
+            Warning    = @($AuditResults | Where-Object Status -eq 'WARNING').Count
+            Vulnerable = @($AuditResults | Where-Object Status -eq 'VULNERABLE').Count
         }
         Results = $AuditResults
     }
@@ -454,7 +472,7 @@ function Invoke-GenerateReport {
 
     # Calcular score si no se provee
     if ($Score -eq 0 -and $AuditResults.Count -gt 0) {
-        $secure = ($AuditResults | Where-Object Status -eq 'SECURE').Count
+        $secure = @($AuditResults | Where-Object Status -eq 'SECURE').Count
         $Score  = [math]::Round(($secure / $AuditResults.Count) * 100, 1)
     }
 

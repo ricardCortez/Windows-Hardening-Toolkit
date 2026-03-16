@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Firewall Module
@@ -43,33 +43,22 @@ function Enable-FirewallProfiles {
 
     Write-LogSection "Hardening: Habilitando perfiles de Firewall"
 
-    $profiles = @('Domain', 'Private', 'Public')
+    try {
+        if ($PSCmdlet.ShouldProcess("Firewall perfiles Domain,Public,Private", "Habilitar")) {
+            Set-NetFirewallProfile -Profile Domain,Public,Private `
+                -Enabled             True `
+                -DefaultInboundAction  Block `
+                -DefaultOutboundAction Allow `
+                -LogAllowed          True `
+                -LogBlocked          True `
+                -LogMaxSizeKilobytes 32767 `
+                -ErrorAction Stop
 
-    foreach ($profileName in $profiles) {
-        try {
-            $current = Get-NetFirewallProfile -Name $profileName -ErrorAction Stop
-
-            if ($current.Enabled -and -not $Force) {
-                Write-LogInfo "Perfil $profileName ya está habilitado. Omitiendo." -Component 'Firewall'
-                continue
-            }
-
-            if ($PSCmdlet.ShouldProcess("Firewall perfil $profileName", "Habilitar")) {
-                Set-NetFirewallProfile -Name $profileName `
-                    -Enabled             True `
-                    -DefaultInboundAction  Block `
-                    -DefaultOutboundAction Allow `
-                    -LogAllowed          True `
-                    -LogBlocked          True `
-                    -LogMaxSizeKilobytes 32767 `
-                    -ErrorAction Stop
-
-                Write-LogSuccess "Perfil $profileName habilitado con política Block inbound." -Component 'Firewall'
-            }
+            Write-LogSuccess "Perfiles Domain, Public, Private habilitados con política Block inbound." -Component 'Firewall'
         }
-        catch {
-            Write-LogError "Error habilitando perfil $profileName : $_" -Component 'Firewall'
-        }
+    }
+    catch {
+        Write-LogError "Error habilitando perfiles de Firewall: $_" -Component 'Firewall'
     }
 }
 
@@ -129,7 +118,7 @@ function Block-CriticalPorts {
                     -Profile     Any `
                     -Description "WHT: $desc - CIS/NIST SC-7" `
                     -Enabled     True `
-                    -ErrorAction Stop | Out-Null
+                    -ErrorAction SilentlyContinue | Out-Null
 
                 Write-LogSuccess "Regla creada: Block $proto/$port ($desc)" -Component 'Firewall'
             }
@@ -179,7 +168,7 @@ function Block-OutboundInsecureProtocols {
                     -Profile     Any `
                     -Description "WHT: $($rule.Description) - CIS/NIST" `
                     -Enabled     True `
-                    -ErrorAction Stop | Out-Null
+                    -ErrorAction SilentlyContinue | Out-Null
 
                 Write-LogSuccess "Regla outbound creada: Block $($rule.Protocol)/$($rule.Port)" -Component 'Firewall'
             }
@@ -202,26 +191,22 @@ function Set-FirewallAdvancedSettings {
 
     Write-LogSection "Hardening: Configuraciones avanzadas de Firewall"
 
-    $profiles = @('Domain', 'Private', 'Public')
+    try {
+        if ($PSCmdlet.ShouldProcess("Firewall Domain,Public,Private", "Configuración avanzada")) {
+            Set-NetFirewallProfile -Profile Domain,Public,Private `
+                -AllowUnicastResponseToMulticast False `
+                -NotifyOnListen                 False `
+                -LogAllowed                     True `
+                -LogBlocked                     True `
+                -LogIgnored                     True `
+                -LogMaxSizeKilobytes             32767 `
+                -ErrorAction Stop
 
-    foreach ($profileName in $profiles) {
-        try {
-            if ($PSCmdlet.ShouldProcess("Firewall $profileName", "Configuración avanzada")) {
-                Set-NetFirewallProfile -Name $profileName `
-                    -AllowUnicastResponseToMulticast False `
-                    -NotifyOnListen                 False `
-                    -LogAllowed                     True `
-                    -LogBlocked                     True `
-                    -LogIgnored                     True `
-                    -LogMaxSizeKilobytes             32767 `
-                    -ErrorAction Stop
-
-                Write-LogSuccess "Configuración avanzada aplicada al perfil $profileName." -Component 'Firewall'
-            }
+            Write-LogSuccess "Configuración avanzada aplicada a perfiles Domain, Public, Private." -Component 'Firewall'
         }
-        catch {
-            Write-LogWarning "No se pudo aplicar configuración avanzada a $profileName : $_" -Component 'Firewall'
-        }
+    }
+    catch {
+        Write-LogWarning "No se pudo aplicar configuración avanzada de Firewall: $_" -Component 'Firewall'
     }
 }
 

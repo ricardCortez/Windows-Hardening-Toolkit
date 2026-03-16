@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Network Security Module
@@ -33,7 +33,7 @@ function Disable-SmbV1 {
         }
         elseif ($PSCmdlet.ShouldProcess('SMBv1 Server', 'Deshabilitar')) {
             Set-SmbServerConfiguration -EnableSMB1Protocol $false -Confirm:$false -ErrorAction Stop
-            Write-LogSuccess "SMBv1 Server deshabilitado." -Component 'Network'
+            Write-LogSuccess "SMBv1 Server deshabilitado via cmdlet." -Component 'Network'
         }
     }
     catch {
@@ -41,10 +41,29 @@ function Disable-SmbV1 {
 
         # Fallback: registro
         $regPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
-        if ($PSCmdlet.ShouldProcess('Registro SMBv1', 'Establecer valor 0')) {
-            Set-ItemProperty -Path $regPath -Name 'SMB1' -Value 0 -Type DWord -Force -ErrorAction SilentlyContinue
-            Write-LogSuccess "SMBv1 deshabilitado via registro." -Component 'Network'
+        try {
+            if ($PSCmdlet.ShouldProcess('Registro SMBv1', 'Establecer valor 0')) {
+                if (-not (Test-Path $regPath)) { New-Item -Path $regPath -Force | Out-Null }
+                Set-ItemProperty -Path $regPath -Name 'SMB1' -Value 0 -Type DWord -Force -ErrorAction Stop
+                Write-LogSuccess "SMBv1 deshabilitado via registro." -Component 'Network'
+            }
         }
+        catch {
+            Write-LogError "No se pudo deshabilitar SMBv1 via registro: $_" -Component 'Network'
+        }
+    }
+
+    # ── Registro SMBv1 (siempre aplicar como respaldo adicional) ──
+    try {
+        $smb1RegPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters'
+        if ($PSCmdlet.ShouldProcess('Registro SMBv1 (refuerzo)', 'Establecer SMB1=0')) {
+            if (-not (Test-Path $smb1RegPath)) { New-Item -Path $smb1RegPath -Force | Out-Null }
+            Set-ItemProperty -Path $smb1RegPath -Name 'SMB1' -Value 0 -Type DWord -Force -ErrorAction Stop
+            Write-LogSuccess "SMBv1 confirmado deshabilitado via registro." -Component 'Network'
+        }
+    }
+    catch {
+        Write-LogWarning "No se pudo confirmar SMBv1 via registro: $_" -Component 'Network'
     }
 
     # ── Cliente SMBv1 (servicio MrxSmb10) ──
@@ -117,7 +136,8 @@ function Enable-SmbSigning {
     # Cliente SMB Signing via registro
     try {
         $clientPath = 'HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters'
-        $currentReq = (Get-ItemProperty -Path $clientPath -Name 'RequireSecuritySignature' -ErrorAction SilentlyContinue)?.RequireSecuritySignature
+        $clientProp = Get-ItemProperty -Path $clientPath -Name 'RequireSecuritySignature' -ErrorAction SilentlyContinue
+        $currentReq = if ($clientProp) { $clientProp.RequireSecuritySignature } else { $null }
 
         if ($currentReq -ne 1) {
             if ($PSCmdlet.ShouldProcess('SMB Client Signing', 'Habilitar firma requerida')) {
@@ -191,8 +211,7 @@ function Disable-NetBiosOverTcpIp {
     Write-LogSection "Hardening: Deshabilitando NetBIOS sobre TCP/IP"
 
     try {
-        $adapters = Get-CimInstance -ClassName Win32_NetworkAdapterConfiguration `
-                                    -Filter 'IPEnabled = True' -ErrorAction Stop
+        $adapters = Get-WmiObject -Class Win32_NetworkAdapterConfiguration -Filter 'IPEnabled=True' -ErrorAction Stop
 
         $changed = 0
 
@@ -203,8 +222,8 @@ function Disable-NetBiosOverTcpIp {
             }
 
             if ($PSCmdlet.ShouldProcess($adapter.Description, "Deshabilitar NetBIOS")) {
-                # Método SetTcpipNetbios: 0=Default(via DHCP), 1=Enabled, 2=Disabled
-                $result = $adapter | Invoke-CimMethod -MethodName 'SetTcpipNetbios' -Arguments @{ TcpipNetbiosOptions = [uint32]2 }
+                # SetTcpipNetbios: 0=Default(via DHCP), 1=Enabled, 2=Disabled
+                $result = $adapter.SetTcpipNetbios(2)
 
                 if ($result.ReturnValue -eq 0) {
                     Write-LogSuccess "NetBIOS deshabilitado en: $($adapter.Description)" -Component 'Network'

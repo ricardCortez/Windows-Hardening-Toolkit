@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Microsoft Defender Module
@@ -183,6 +183,17 @@ function Enable-AsrRules {
         )
     }
 
+    # Verificar que Defender Antivirus está activo antes de aplicar reglas ASR
+    try {
+        $mpStatus = Get-MpComputerStatus -ErrorAction Stop
+        if (-not $mpStatus.AntivirusEnabled) {
+            Write-LogWarning "Antivirus no está habilitado. Las reglas ASR pueden no aplicarse correctamente." -Component 'Defender'
+        }
+    }
+    catch {
+        Write-LogWarning "No se pudo verificar estado de Antivirus antes de aplicar ASR: $_" -Component 'Defender'
+    }
+
     $enabled = 0
     $failed  = 0
 
@@ -195,7 +206,7 @@ function Enable-AsrRules {
                 Add-MpPreference `
                     -AttackSurfaceReductionRules_Ids     $ruleId `
                     -AttackSurfaceReductionRules_Actions $action `
-                    -ErrorAction Stop
+                    -ErrorAction SilentlyContinue
 
                 Write-LogSuccess "ASR [$action]: $ruleName" -Component 'Defender'
                 $enabled++

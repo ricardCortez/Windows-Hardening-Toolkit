@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Credentials Security Module
@@ -33,7 +33,8 @@ function Enable-LsassProtection {
     Write-LogSection "Hardening: LSASS Protected Process Light (RunAsPPL)"
 
     $lsaPath  = 'HKLM:\SYSTEM\CurrentControlSet\Control\Lsa'
-    $current  = (Get-ItemProperty -Path $lsaPath -Name 'RunAsPPL' -ErrorAction SilentlyContinue)?.RunAsPPL
+    $lsaProp  = Get-ItemProperty -Path $lsaPath -Name 'RunAsPPL' -ErrorAction SilentlyContinue
+    $current  = if ($lsaProp) { $lsaProp.RunAsPPL } else { $null }
 
     if ($current -eq 1) {
         Write-LogInfo "LSASS RunAsPPL ya está habilitado." -Component 'Credentials'
@@ -42,9 +43,10 @@ function Enable-LsassProtection {
 
     try {
         if ($PSCmdlet.ShouldProcess('LSASS RunAsPPL', 'Habilitar (requiere reinicio)')) {
-            Set-ItemProperty -Path $lsaPath -Name 'RunAsPPL'            -Value 1 -Type DWord -Force
-            Set-ItemProperty -Path $lsaPath -Name 'RunAsPPLBoot'        -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
-            Set-ItemProperty -Path $lsaPath -Name 'PPLEnabled'          -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+            if (-not (Test-Path $lsaPath)) { New-Item -Path $lsaPath -Force | Out-Null }
+            Set-ItemProperty -Path $lsaPath -Name 'RunAsPPL'     -Value 1 -Type DWord -Force -ErrorAction Stop
+            Set-ItemProperty -Path $lsaPath -Name 'RunAsPPLBoot' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue
+            # NOTE: LsaCfgFlags is NOT set here; it is managed exclusively by Enable-CredentialGuard
 
             Write-LogSuccess "LSASS RunAsPPL habilitado. REINICIO REQUERIDO." -Component 'Credentials'
             Write-LogWarning "Nota: Los controladores y herramientas que inyectan en LSASS dejarán de funcionar." -Component 'Credentials'
@@ -88,7 +90,8 @@ function Disable-WDigest {
     }
 
     try {
-        $current = (Get-ItemProperty -Path $wdigestPath -Name 'UseLogonCredential' -ErrorAction SilentlyContinue)?.UseLogonCredential
+        $wdigestProp = Get-ItemProperty -Path $wdigestPath -Name 'UseLogonCredential' -ErrorAction SilentlyContinue
+        $current = if ($wdigestProp) { $wdigestProp.UseLogonCredential } else { $null }
 
         if ($current -eq 0) {
             Write-LogInfo "WDigest ya está deshabilitado." -Component 'Credentials'
@@ -130,7 +133,7 @@ function Enable-CredentialGuard {
 
         # Verificar virtualización
         $hvPath  = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization'
-        $hvEnabled = Test-Path $hvPath
+        $null    = Test-Path $hvPath   # hvPath checked; result unused by design
 
         Write-LogInfo "Sistema: $($systemInfo.Manufacturer) $($systemInfo.Model)" -Component 'Credentials'
         Write-LogInfo "OS: $($osInfo.Caption) Build $($osInfo.BuildNumber)" -Component 'Credentials'

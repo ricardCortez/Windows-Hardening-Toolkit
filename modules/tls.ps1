@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - TLS/SSL Protocol Module
@@ -61,7 +61,8 @@ function Set-TlsProtocol {
                 }
             }
 
-            if ($PSCmdlet.ShouldProcess("$Protocol/$r", if ($Enabled) { 'Habilitar' } else { 'Deshabilitar' })) {
+            $actionLabel = if ($Enabled) { 'Habilitar' } else { 'Deshabilitar' }
+            if ($PSCmdlet.ShouldProcess("$Protocol/$r", $actionLabel)) {
                 Set-ItemProperty -Path $regPath -Name 'Enabled'           -Value $enabledVal  -Type DWord -Force
                 Set-ItemProperty -Path $regPath -Name 'DisabledByDefault' -Value $disabledVal -Type DWord -Force
 

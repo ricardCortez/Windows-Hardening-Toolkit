@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Registry Hardening Module
@@ -385,6 +385,36 @@ function Invoke-MiscSecurityHardening {
         -Reference 'CIS 2.3.11.6 / MITRE T1003'
 }
 
+# ─── HARDENING: POLÍTICAS DE CONTRASEÑA ───────────────────────────────────────
+
+function Invoke-PasswordPolicyHardening {
+    <#
+    .SYNOPSIS
+        Aplica políticas de contraseña mínimas recomendadas via net accounts.
+    .NOTES
+        CIS 1.1.x / NIST IA-5
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param()
+
+    Write-LogSection "Hardening: Políticas de Contraseña"
+
+    if ($PSCmdlet.ShouldProcess('Password Policy', 'Aplicar net accounts')) {
+        try {
+            net accounts /minpwlen:12 /maxpwage:90 /minpwage:1 /uniquepw:5 2>&1 | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+                Write-LogWarning "net accounts retornó código $LASTEXITCODE al aplicar políticas de contraseña." -Component 'Registry'
+            }
+            else {
+                Write-LogSuccess "Políticas de contraseña aplicadas: minlen=12, maxage=90, minage=1, history=5." -Component 'Registry'
+            }
+        }
+        catch {
+            Write-LogWarning "Error al aplicar políticas de contraseña: $_" -Component 'Registry'
+        }
+    }
+}
+
 # ─── FUNCIÓN MAESTRA ──────────────────────────────────────────────────────────
 
 function Invoke-RegistryHardening {
@@ -402,6 +432,7 @@ function Invoke-RegistryHardening {
     Invoke-AutoRunHardening
     Invoke-WinRMHardening
     Invoke-MiscSecurityHardening
+    Invoke-PasswordPolicyHardening
 
     Write-LogSuccess "Hardening de Registro completado." -Component 'Registry'
 }

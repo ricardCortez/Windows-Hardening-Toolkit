@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     Windows Hardening Toolkit - Audit Module
@@ -78,26 +78,26 @@ function Invoke-FirewallAudit {
     try {
         $profiles = Get-NetFirewallProfile -ErrorAction Stop
 
-        foreach ($profile in $profiles) {
-            $status = if ($profile.Enabled) { 'SECURE' } else { 'VULNERABLE' }
+        foreach ($fwProfile in $profiles) {
+            $status = if ($fwProfile.Enabled) { 'SECURE' } else { 'VULNERABLE' }
             New-AuditResult `
                 -Category   'Firewall' `
-                -Control    "Perfil $($profile.Name)" `
+                -Control    "Perfil $($fwProfile.Name)" `
                 -Status     $status `
-                -CurrentValue (if ($profile.Enabled) { 'Habilitado' } else { 'Deshabilitado' }) `
+                -CurrentValue $(if ($fwProfile.Enabled) { 'Habilitado' } else { 'Deshabilitado' }) `
                 -ExpectedValue 'Habilitado' `
-                -Remediation 'Set-NetFirewallProfile -Name $profile.Name -Enabled True' `
+                -Remediation "Set-NetFirewallProfile -Name $($fwProfile.Name) -Enabled True" `
                 -Reference  'CIS 9.1 / NIST SC-7'
         }
 
         # Verificar política de bloqueo por defecto (tráfico entrante)
-        foreach ($profile in $profiles) {
-            $status = if ($profile.DefaultInboundAction -eq 'Block') { 'SECURE' } else { 'WARNING' }
+        foreach ($fwProfile in $profiles) {
+            $status = if ($fwProfile.DefaultInboundAction -eq 'Block') { 'SECURE' } else { 'WARNING' }
             New-AuditResult `
                 -Category   'Firewall' `
-                -Control    "DefaultInbound $($profile.Name)" `
+                -Control    "DefaultInbound $($fwProfile.Name)" `
                 -Status     $status `
-                -CurrentValue $profile.DefaultInboundAction `
+                -CurrentValue $fwProfile.DefaultInboundAction `
                 -ExpectedValue 'Block' `
                 -Remediation 'Set-NetFirewallProfile -DefaultInboundAction Block' `
                 -Reference  'CIS 9.2'
@@ -124,7 +124,7 @@ function Invoke-SmbAudit {
             -Category   'Network' `
             -Control    'SMBv1 Protocol' `
             -Status     $smb1Status `
-            -CurrentValue (if ($smb1.EnableSMB1Protocol) { 'Habilitado (PELIGROSO)' } else { 'Deshabilitado' }) `
+            -CurrentValue $(if ($smb1.EnableSMB1Protocol) { 'Habilitado (PELIGROSO)' } else { 'Deshabilitado' }) `
             -ExpectedValue 'Deshabilitado' `
             -Remediation 'Set-SmbServerConfiguration -EnableSMB1Protocol $false' `
             -Reference  'CIS 18.3.3 / MS-LAPS / EternalBlue mitigation'
@@ -137,7 +137,7 @@ function Invoke-SmbAudit {
         $smb1Enabled = if ($null -eq $regVal -or $regVal.SMB1 -ne 0) { $true } else { $false }
         $status = if (-not $smb1Enabled) { 'SECURE' } else { 'VULNERABLE' }
         New-AuditResult -Category 'Network' -Control 'SMBv1 (registry)' -Status $status `
-            -CurrentValue (if ($smb1Enabled) { 'Habilitado' } else { 'Deshabilitado' }) `
+            -CurrentValue $(if ($smb1Enabled) { 'Habilitado' } else { 'Deshabilitado' }) `
             -ExpectedValue 'Deshabilitado' `
             -Remediation 'Set-ItemProperty HKLM:\...LanmanServer\Parameters SMB1 0' `
             -Reference 'CIS 18.3.3'
@@ -151,7 +151,7 @@ function Invoke-SmbAudit {
             -Category   'Network' `
             -Control    'SMB Signing requerido' `
             -Status     $signingStatus `
-            -CurrentValue (if ($smbConf.RequireSecuritySignature) { 'Habilitado' } else { 'Deshabilitado' }) `
+            -CurrentValue $(if ($smbConf.RequireSecuritySignature) { 'Habilitado' } else { 'Deshabilitado' }) `
             -ExpectedValue 'Habilitado' `
             -Remediation 'Set-SmbServerConfiguration -RequireSecuritySignature $true' `
             -Reference  'CIS 18.3.6'
@@ -168,7 +168,7 @@ function Invoke-SmbAudit {
             -Category   'Network' `
             -Control    'SMB Compression' `
             -Status     $compressStatus `
-            -CurrentValue (if ($smbConf.DisableCompression) { 'Deshabilitada' } else { 'Habilitada' }) `
+            -CurrentValue $(if ($smbConf.DisableCompression) { 'Deshabilitada' } else { 'Habilitada' }) `
             -ExpectedValue 'Deshabilitada' `
             -Remediation 'Set-SmbServerConfiguration -DisableCompression $true' `
             -Reference  'CVE-2020-0796 mitigation'
@@ -194,7 +194,7 @@ function Invoke-NetBiosLlmnrAudit {
             -Category   'Network' `
             -Control    'NetBIOS sobre TCP/IP' `
             -Status     $status `
-            -CurrentValue (if ($netbiosEnabled) { "Habilitado en $($netbiosEnabled.Count) adaptador(es)" } else { 'Deshabilitado' }) `
+            -CurrentValue $(if ($netbiosEnabled) { "Habilitado en $($netbiosEnabled.Count) adaptador(es)" } else { 'Deshabilitado' }) `
             -ExpectedValue 'Deshabilitado en todos los adaptadores' `
             -Remediation 'Iterar adaptadores y establecer TcpipNetbiosOptions = 2' `
             -Reference  'CIS 18.5.4 / MITRE T1171'
@@ -214,7 +214,7 @@ function Invoke-NetBiosLlmnrAudit {
         -Category   'Network' `
         -Control    'LLMNR (Link-Local Multicast)' `
         -Status     $status `
-        -CurrentValue (if ($llmnrEnabled) { 'Habilitado (responder vulnerable)' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($llmnrEnabled) { 'Habilitado (responder vulnerable)' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Deshabilitado' `
         -Remediation 'GPO: Computer Config > Admin Templates > DNS Client > Turn off Multicast' `
         -Reference  'CIS 18.5.4.2 / MITRE T1557'
@@ -272,8 +272,8 @@ function Invoke-TlsAudit {
     }
 
     foreach ($proto in $protocols.GetEnumerator()) {
-        $regVal  = Get-ItemProperty -Path $proto.Value.Path -Name 'Enabled' -ErrorAction SilentlyContinue
-        $disabled = Get-ItemProperty -Path $proto.Value.Path -Name 'DisabledByDefault' -ErrorAction SilentlyContinue
+        $regVal  = Get-ItemProperty -Path $proto.Value.Path -Name 'Enabled'           -ErrorAction SilentlyContinue
+        $null    = Get-ItemProperty -Path $proto.Value.Path -Name 'DisabledByDefault' -ErrorAction SilentlyContinue
 
         # Si la clave no existe, asumimos estado por defecto del SO
         $isEnabled = if ($null -eq $regVal) {
@@ -313,7 +313,7 @@ function Invoke-DefenderAudit {
         # Protección en tiempo real
         $status = if ($defStatus.RealTimeProtectionEnabled) { 'SECURE' } else { 'VULNERABLE' }
         New-AuditResult -Category 'Defender' -Control 'Real-Time Protection' -Status $status `
-            -CurrentValue (if ($defStatus.RealTimeProtectionEnabled) { 'Activa' } else { 'Inactiva' }) `
+            -CurrentValue $(if ($defStatus.RealTimeProtectionEnabled) { 'Activa' } else { 'Inactiva' }) `
             -ExpectedValue 'Activa' `
             -Remediation 'Set-MpPreference -DisableRealtimeMonitoring $false' `
             -Reference 'CIS 18.9.45 / MITRE T1562.001'
@@ -436,7 +436,7 @@ function Invoke-CredentialsAudit {
     $pplVal  = Get-ItemProperty -Path $lsaPath -Name 'RunAsPPL' -ErrorAction SilentlyContinue
     $pplStatus = if ($pplVal -and $pplVal.RunAsPPL -eq 1) { 'SECURE' } else { 'VULNERABLE' }
     New-AuditResult -Category 'Credentials' -Control 'LSASS RunAsPPL' -Status $pplStatus `
-        -CurrentValue (if ($pplVal -and $pplVal.RunAsPPL -eq 1) { 'Habilitado' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($pplVal -and $pplVal.RunAsPPL -eq 1) { 'Habilitado' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Habilitado' `
         -Remediation 'Set-ItemProperty HKLM:\SYSTEM\...\Lsa RunAsPPL 1 (requiere reinicio)' `
         -Reference 'CIS 18.3.1 / MITRE T1003.001'
@@ -447,7 +447,7 @@ function Invoke-CredentialsAudit {
     $wdigestEnabled = ($null -ne $wdigestVal -and $wdigestVal.UseLogonCredential -eq 1)
     $wdStatus = if (-not $wdigestEnabled) { 'SECURE' } else { 'VULNERABLE' }
     New-AuditResult -Category 'Credentials' -Control 'WDigest Authentication' -Status $wdStatus `
-        -CurrentValue (if ($wdigestEnabled) { 'Habilitado (credenciales en claro en memoria)' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($wdigestEnabled) { 'Habilitado (credenciales en claro en memoria)' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Deshabilitado' `
         -Remediation 'Set-ItemProperty HKLM:\...\WDigest UseLogonCredential 0' `
         -Reference 'CIS 18.3.7 / MITRE T1003.001'
@@ -458,7 +458,7 @@ function Invoke-CredentialsAudit {
     $cgEnabled = ($null -ne $cgVal -and $cgVal.EnableVirtualizationBasedSecurity -ge 1)
     $cgStatus = if ($cgEnabled) { 'SECURE' } else { 'WARNING' }
     New-AuditResult -Category 'Credentials' -Control 'Virtualization Based Security' -Status $cgStatus `
-        -CurrentValue (if ($cgEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($cgEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Habilitado' `
         -Remediation 'Habilitar VBS/Credential Guard en Device Guard (requiere hardware compatible)' `
         -Reference 'CIS 18.8.5 / MITRE T1003'
@@ -490,7 +490,7 @@ function Invoke-PowerShellAudit {
     $sblEnabled = ($null -ne $sblVal -and $sblVal.EnableScriptBlockLogging -eq 1)
     $sblStatus = if ($sblEnabled) { 'SECURE' } else { 'WARNING' }
     New-AuditResult -Category 'PowerShell' -Control 'Script Block Logging' -Status $sblStatus `
-        -CurrentValue (if ($sblEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($sblEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Habilitado' `
         -Remediation 'GPO: PowerShell > Turn on Script Block Logging' `
         -Reference 'CIS 18.9.95.1 / MITRE T1059.001'
@@ -501,7 +501,7 @@ function Invoke-PowerShellAudit {
     $mlEnabled = ($null -ne $mlVal -and $mlVal.EnableModuleLogging -eq 1)
     $mlStatus = if ($mlEnabled) { 'SECURE' } else { 'WARNING' }
     New-AuditResult -Category 'PowerShell' -Control 'Module Logging' -Status $mlStatus `
-        -CurrentValue (if ($mlEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
+        -CurrentValue $(if ($mlEnabled) { 'Habilitado' } else { 'Deshabilitado' }) `
         -ExpectedValue 'Habilitado' `
         -Remediation 'GPO: PowerShell > Turn on Module Logging' `
         -Reference 'CIS 18.9.95.2'
@@ -529,8 +529,8 @@ function Invoke-PasswordPolicyAudit {
 
         # Parsear salida de net accounts
         $minLen    = ($netAccountsOutput | Select-String 'Minimum password length').ToString() -replace '\D+', ''
-        $maxAge    = ($netAccountsOutput | Select-String 'Maximum password age').ToString() -replace '[^0-9]', ''
-        $minAge    = ($netAccountsOutput | Select-String 'Minimum password age').ToString() -replace '[^0-9]', ''
+        $null = ($netAccountsOutput | Select-String 'Maximum password age')   # auditado via lockout threshold
+        $null = ($netAccountsOutput | Select-String 'Minimum password age')
         $history   = ($netAccountsOutput | Select-String 'Length of password history').ToString() -replace '[^0-9]', ''
         $lockCount = ($netAccountsOutput | Select-String 'Lockout threshold').ToString() -replace '[^0-9]', ''
 
@@ -592,9 +592,9 @@ function Invoke-FullAudit {
 
     # Resumen
     $results  = $Script:AuditResults
-    $secure   = ($results | Where-Object Status -eq 'SECURE').Count
-    $warning  = ($results | Where-Object Status -eq 'WARNING').Count
-    $vuln     = ($results | Where-Object Status -eq 'VULNERABLE').Count
+    $secure   = @($results | Where-Object Status -eq 'SECURE').Count
+    $warning  = @($results | Where-Object Status -eq 'WARNING').Count
+    $vuln     = @($results | Where-Object Status -eq 'VULNERABLE').Count
     $total    = $results.Count
 
     Write-LogSection "RESUMEN DE AUDITORÍA"
